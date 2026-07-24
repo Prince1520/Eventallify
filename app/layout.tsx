@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "sonner";
+import { ChatWidget } from "@/components/chat/chat-widget";
+
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -30,6 +32,7 @@ export default function RootLayout({
           <Navbar />
           <main className="flex-1">{children}</main>
           <Toaster position="top-right" richColors />
+          <ChatWidget />
         </ThemeProvider>
       </body>
     </html>
