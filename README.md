@@ -11,6 +11,7 @@ A college event management platform built with Next.js 16, allowing students to 
 - **Database:** PostgreSQL (Neon) via Drizzle ORM
 - **Email:** Resend (verification emails, registration confirmations with QR codes)
 - **Icons:** Lucide React
+- **AI Chatbot:** Groq (Llama 3.3 70B) for a site-wide assistant widget
 
 ## Getting Started
 
@@ -19,6 +20,7 @@ A college event management platform built with Next.js 16, allowing students to 
 - Node.js 18+
 - A PostgreSQL database (e.g. [Neon](https://neon.tech))
 - A [Resend](https://resend.com) API key (for emails)
+- A [Groq](https://console.groq.com) API key (for the chatbot)
 - Optional: Google OAuth credentials (for Google sign-in)
 
 ### Environment Variables
@@ -39,6 +41,9 @@ GOOGLE_CLIENT_SECRET=""
 # Optional — Resend email
 RESEND_API_KEY=""
 EMAIL_FROM="Eventallify <onboarding@resend.dev>"
+
+# AI Chatbot — Groq
+GROQ_API_KEY=""
 ```
 
 ### Install & Run
@@ -62,7 +67,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Test Credentials (after seeding)
 
 | Role    | Email               | Password    |
-| ------- | ------------------- | ----------- |
+| ------- | -------------------- | ----------- |
 | Admin   | admin@college.edu   | password123 |
 | Student | student@college.edu | password123 |
 
@@ -71,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Available Scripts
 
 | Script                  | Description                          |
-| ----------------------- | ------------------------------------ |
+| ----------------------- | ------------------------------------- |
 | `npm run dev`           | Start the Next.js dev server         |
 | `npm run build`         | Production build                     |
 | `npm run start`         | Start the production server          |
@@ -99,6 +104,7 @@ Eventallify/
 │   ├── api/                    # API route handlers
 │   │   ├── auth/               #   Better Auth endpoints
 │   │   ├── announcements/      #   Announcements API
+│   │   ├── chat/               #   AI chatbot API (Groq)
 │   │   ├── dashboard/          #   Dashboard data API
 │   │   ├── events/             #   Events API
 │   │   ├── registrations/      #   Registration API
@@ -110,11 +116,13 @@ Eventallify/
 │   │   ├── [id]/               #   Single event page
 │   │   └── my-events/          #   User's registered events
 │   ├── profile/                # User profile page
-│   ├── layout.tsx              # Root layout (navbar, theme, toaster)
+│   ├── layout.tsx              # Root layout (navbar, theme, toaster, chat widget)
 │   ├── page.tsx                # Landing page
 │   └── globals.css             # Global styles + Tailwind config
 │
 ├── components/                 # React components
+│   ├── chat/                   # AI chatbot widget
+│   │   └── chat-widget.tsx
 │   ├── dashboards/             # Dashboard views
 │   │   ├── admin-dashboard.tsx
 │   │   └── student-dashboard.tsx
@@ -156,18 +164,31 @@ Eventallify/
 - **QR code tickets:** Registration confirmation emails include scannable QR codes for check-in
 - **Calendar view:** Visual calendar of upcoming events
 - **Announcements:** Admin-published announcements with priority levels (low/normal/high)
+- **AI chatbot:** Site-wide assistant widget (Groq + Llama 3.3 70B) available to all visitors
 - **Email verification:** Account verification via Resend
 - **Google OAuth:** Optional Google sign-in alongside email/password
 - **Dark mode:** Theme toggle via next-themes
 - **Rate limiting:** Database-backed rate limiting via Better Auth
 - **Responsive UI:** Mobile-friendly with 60 shadcn/ui components
 
+## AI Chatbot
+
+Eventallify includes a floating chat widget (bottom-right of every page) powered by [Groq](https://groq.com)'s Llama 3.3 70B model.
+
+- **Availability:** Public — works for both anonymous visitors and logged-in users
+- **Current scope:** General-purpose assistant — answers questions about how the platform works, gives event-planning advice, helps draft announcement text, and handles general troubleshooting. It does **not** yet query live event/registration data.
+- **Files:**
+  - `app/api/chat/route.ts` — server-side streaming API route that calls the Groq API
+  - `components/chat/chat-widget.tsx` — the floating chat UI, mounted globally in `app/layout.tsx`
+- **Setup:** Requires a `GROQ_API_KEY` in `.env` (see [Environment Variables](#environment-variables)). Get a free key at [console.groq.com](https://console.groq.com).
+- **Planned:** Tool-calling support so the bot can answer questions using live data from the `events`, `announcements`, and `registrations` tables (e.g. "what's happening this week?" or "what am I registered for?").
+
 ## Database Schema
 
 The app uses 7 tables:
 
 | Table           | Purpose                                   |
-| --------------- | ----------------------------------------- |
+| --------------- | ------------------------------------------ |
 | `user`          | User accounts (id, name, email, role)     |
 | `session`       | Active sessions                           |
 | `account`       | OAuth / password credentials              |
@@ -182,8 +203,19 @@ The app uses 7 tables:
 Route protection is handled in `proxy.ts`:
 
 | Route Group                                   | Access                                        |
-| --------------------------------------------- | --------------------------------------------- |
+| ---------------------------------------------- | ---------------------------------------------- |
 | `/`, `/events`, `/calendar`, `/announcements` | Public                                        |
 | `/dashboard`, `/profile`, `/my-events`        | Authenticated users                           |
 | `/admin/*`                                    | Authenticated users                           |
 | `/login`, `/register`                         | Redirect to `/dashboard` if already logged in |
+
+## API Routes
+
+| Route             | Purpose                                                    |
+| ------------------ | ----------------------------------------------------------- |
+| `/api/chat`        | Streams chatbot responses from Groq (POST, `{ messages }`) |
+| `/api/events`      | CRUD for events                                            |
+| `/api/registrations` | Register/unregister for events                           |
+| `/api/announcements` | CRUD for announcements                                    |
+| `/api/dashboard`   | Aggregated dashboard data                                  |
+| `/api/user`        | User profile data                                           |
